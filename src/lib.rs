@@ -2,21 +2,24 @@ use std::fmt;
 use std::fmt::Write as _;
 
 /// +---+---+---+
-/// |   |   |   |
+/// | 02| 12| 22|
 /// +---+---+---+
-/// |   |   |   |
+/// | 01| 11| 21|
 /// +---+---+---+
-/// |   |   |   |
+/// | 00| 10| 20|
 /// +---+---+---+
-
+///
+/// Cell positions labeled above as xy
+/// Walls marked below increasing from 0..N
+///
 /// Vertical Walls
-/// 1 1
-/// 1 1
-/// 1 1
+/// 8 11
+/// 7 10
+/// 6 9
 ///
 /// Horizontal Walls
-/// 1 1 1
-/// 1 1 1
+/// 3 4 5
+/// 0 1 2
 ///
 
 #[derive(Debug, Copy, Clone)]
@@ -28,7 +31,20 @@ enum Wall {
 struct Maze {
     height: u32,
     width: u32,
-    walls: Vec<Wall>
+    walls: Vec<Wall>,
+}
+
+struct WallIndexesForCell {
+    north: Option<usize>,
+    east: Option<usize>,
+    south: Option<usize>,
+    west: Option<usize>,
+}
+
+struct MazeTraveler {
+    current_x: u32,
+    current_y: u32,
+    maze: Maze,
 }
 
 impl Maze {
@@ -44,6 +60,41 @@ impl Maze {
             height,
             width,
             walls,
+        }
+    }
+
+    fn north_wall_index_for_cell(&self, x: u32, y: u32) -> Option<usize> {
+        Some((x + y * self.width) as usize)
+    }
+
+    fn east_wall_index_for_cell(&self, x: u32, y: u32) -> Option<usize> {
+        let num_horizontal_segments = (self.height - 1) * self.width;
+        // vertical segments are stored after all of the horizontal segments
+        let east = num_horizontal_segments + (y + x * self.height);
+
+        Some(east as usize)
+    }
+
+    fn wall_indexes_for_cell(&self, x: u32, y: u32) -> WallIndexesForCell {
+        let south = match (x, y) {
+            // cells at bottom of maze do not have south wall
+            (x, 0) => None,
+            // get south wall index by going one cell down and getting north wall index
+            (x, y) => self.north_wall_index_for_cell(x, y - 1),
+        };
+
+        let west = match (x, y) {
+            // walls at left of maze have no west wall
+            (0, y) => None,
+            // get west wall index by going one cell left and getting east wall index
+            (x, y) => self.east_wall_index_for_cell(x - 1, y),
+        };
+
+        WallIndexesForCell {
+            north: self.north_wall_index_for_cell(x, y),
+            east: self.east_wall_index_for_cell(x, y),
+            south,
+            west,
         }
     }
 
@@ -79,6 +130,24 @@ impl fmt::Display for Maze {
     }
 }
 
+impl MazeTraveler {
+    fn new(maze: Maze) -> Self {
+        MazeTraveler {
+            current_x: 0,
+            current_y: 0,
+            maze,
+        }
+    }
+
+    fn release(self) -> Maze {
+        self.maze
+    }
+
+//    fn open_north(&mut self) {
+//        self.maze[0] = Wall::Open;
+//    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,4 +161,44 @@ mod tests {
         // todo can insta handle printing if type impls Display
         assert_snapshot_matches!("new_3x3", maze.as_string());
     }
+
+    #[test]
+    fn wall_indexes_for_cell_00() {
+        let maze = Maze::new(3, 3);
+        let wall_indexes = maze.wall_indexes_for_cell(0, 0);
+
+        assert_eq!(Some(0), wall_indexes.north);
+        assert_eq!(Some(6), wall_indexes.east);
+        assert_eq!(None, wall_indexes.south);
+        assert_eq!(None, wall_indexes.west);
+    }
+
+    #[test]
+    fn wall_indexes_for_cell_11() {
+        let maze = Maze::new(3, 3);
+        let wall_indexes = maze.wall_indexes_for_cell(1, 1);
+
+        assert_eq!(Some(4), wall_indexes.north);
+        assert_eq!(Some(10), wall_indexes.east);
+        assert_eq!(Some(1), wall_indexes.south);
+        assert_eq!(Some(7), wall_indexes.west);
+    }
+
+    #[test]
+    fn wall_indexes_for_cell_22() {
+        let maze = Maze::new(3, 3);
+        let wall_indexes = maze.wall_indexes_for_cell(1, 1);
+
+        // todo assertions
+    }
+
+//    #[test]
+//    fn open_north() {
+//        let maze = Maze::new(3, 3);
+//        let mut traveler = MazeTraveler::new(maze);
+//
+//        traveler.open_north();
+//
+//        assert_snapshot_matches!("open_north", traveler.release().as_string());
+//    }
 }
