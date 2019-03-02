@@ -22,6 +22,8 @@ use std::fmt::Write as _;
 /// 0 1 2
 ///
 
+const LINE_ENDING: &'static str = "\n";
+
 #[derive(Debug, Copy, Clone)]
 enum Wall {
     Open,
@@ -93,14 +95,17 @@ impl Maze {
         Some(index)
     }
 
-    fn wall_indexes_for_cell(&self, x: u32, y: u32) -> WallIndexesForCell {
-        let south = match (x, y) {
+    fn south_wall_index_for_cell(&self, x: u32, y: u32) -> Option<usize> {
+        match (x, y) {
             // cells at bottom of maze do not have south wall
             (x, 0) => None,
             // get south wall index by going one cell down and getting north wall index
             (x, y) => self.north_wall_index_for_cell(x, y - 1),
-        };
+        }
+    }
 
+    // todo perhaps this method can be removed?
+    fn wall_indexes_for_cell(&self, x: u32, y: u32) -> WallIndexesForCell {
         let west = match (x, y) {
             // walls at left of maze have no west wall
             (0, y) => None,
@@ -111,32 +116,81 @@ impl Maze {
         WallIndexesForCell {
             north: self.north_wall_index_for_cell(x, y),
             east: self.east_wall_index_for_cell(x, y),
-            south,
+            south: self.south_wall_index_for_cell(x, y),
             west,
         }
     }
 
     fn as_string(&self) -> String {
+
         let horizontal_wall_segment = "+---";
         let vertical_wall_segment = "|   ";
-        let mut horizontal = String::new();
+        let mut horizontal_maze_edge = String::new();
         let mut vertical = String::new();
 
         for _ in 0..self.width {
-            horizontal += horizontal_wall_segment;
+            horizontal_maze_edge += horizontal_wall_segment;
             vertical += vertical_wall_segment;
         }
 
-        horizontal += "+";
+        horizontal_maze_edge += "+";
         vertical += "|";
+
 
         let mut total = String::new();
 
-        for _ in 0..self.height {
-            let _ = writeln!(total, "{}", horizontal);
-            let _ = writeln!(total, "{}", vertical);
+        // add top maze edge
+        total += &horizontal_maze_edge;
+
+        for y in (0..self.height).rev() {
+
+            total += LINE_ENDING;
+
+            // add left maze edge
+            total += "|   ";
+
+            for x in 0..self.width {
+                // for each cell add east wall
+                let wall_index = self.east_wall_index_for_cell(x, y);
+
+                if let Some(index) = wall_index {
+                    let segment = match self.walls[index] {
+                        Wall::Open => "    ",
+                        Wall::Closed => "|   ",
+                    };
+
+                    total += segment;
+                } else {
+                    // you've reached the edge of the maze
+                    total += "|";
+                }
+            }
+
+            // insert newline between vertical walls and horizontal walls
+            total += LINE_ENDING;
+
+            for x in 0..self.width {
+                // for each cell add south wall
+
+                // todo consider cleaning this up by adding helper method to get wall
+                //     state directly rather than index
+                let wall_index = self.south_wall_index_for_cell(x, y);
+
+                if let Some(index) = wall_index {
+                    let segment = match self.walls[index] {
+                        Wall::Open => "+   ",
+                        Wall::Closed => "+---",
+                    };
+
+                    total += segment;
+                } else {
+                    // you've reached the edge of the maze
+                    total += "+---";
+                }
+            }
+
+            total += "+";
         }
-        let _ = write!(total, "{}", horizontal); // last row should not have newline
 
         total
     }
@@ -161,9 +215,9 @@ impl MazeTraveler {
         self.maze
     }
 
-//    fn open_north(&mut self) {
-//        self.maze[0] = Wall::Open;
-//    }
+    fn open_north_wall(&mut self) {
+        self.maze.walls[0] = Wall::Open;
+    }
 }
 
 #[cfg(test)]
@@ -213,13 +267,13 @@ mod tests {
         assert_eq!(Some(11), wall_indexes.west);
     }
 
-//    #[test]
-//    fn open_north() {
-//        let maze = Maze::new(3, 3);
-//        let mut traveler = MazeTraveler::new(maze);
-//
-//        traveler.open_north();
-//
-//        assert_snapshot_matches!("open_north", traveler.release().as_string());
-//    }
+    #[test]
+    fn open_north_wall() {
+        let maze = Maze::new(3, 3);
+        let mut traveler = MazeTraveler::new(maze);
+
+        traveler.open_north_wall();
+
+        assert_snapshot_matches!("open_north_wall", traveler.release().as_string());
+    }
 }

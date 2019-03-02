@@ -1,0 +1,13 @@
+---
+created: "2019-03-02T11:35:57.636830Z"
+creator: insta@0.6.3
+source: src/lib.rs
+expression: traveler.release().as_string()
+---
++---+---+---+
+|   |   |   |
++---+---+---+
+|   |   |   |
++   +---+---+
+|   |   |   |
++---+---+---+
