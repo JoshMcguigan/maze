@@ -216,11 +216,29 @@ impl MazeTraveler {
     }
 
     fn open_north_wall(&mut self) {
-        self.maze.walls[0] = Wall::Open;
+        let index = self.maze.north_wall_index_for_cell(self.current_x, self.current_y);
+
+        match index {
+            Some(index) => self.maze.walls[index] = Wall::Open,
+            None => {}, // trying to open through the edge of the map is currently a no-op
+        };
     }
 
     fn open_east_wall(&mut self) {
-        self.maze.walls[6] = Wall::Open;
+        let index = self.maze.east_wall_index_for_cell(self.current_x, self.current_y);
+
+        match index {
+            Some(index) => self.maze.walls[index] = Wall::Open,
+            None => {}, // trying to open through the edge of the map is currently a no-op
+        };
+    }
+
+    fn move_to_next_cell(self) -> Option<Self> {
+        Some(MazeTraveler {
+            current_x: 1,
+            current_y: 0,
+            maze: self.maze
+        })
     }
 }
 
@@ -289,5 +307,27 @@ mod tests {
         traveler.open_east_wall();
 
         assert_snapshot_matches!("open_east_wall", traveler.release().as_string());
+    }
+
+    #[test]
+    fn next_cell_open_north_wall() {
+        let maze = Maze::new(3, 3);
+        let traveler = MazeTraveler::new(maze);
+        let mut traveler = traveler.move_to_next_cell().unwrap();
+
+        traveler.open_north_wall();
+
+        assert_snapshot_matches!("next_cell_open_north_wall", traveler.release().as_string());
+    }
+
+    #[test]
+    fn next_cell_open_east_wall() {
+        let maze = Maze::new(3, 3);
+        let traveler = MazeTraveler::new(maze);
+        let mut traveler = traveler.move_to_next_cell().unwrap();
+
+        traveler.open_east_wall();
+
+        assert_snapshot_matches!("next_cell_open_east_wall", traveler.release().as_string());
     }
 }
