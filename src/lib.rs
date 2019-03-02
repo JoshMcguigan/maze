@@ -46,7 +46,13 @@ struct WallIndexesForCell {
 struct MazeTraveler {
     current_x: u32,
     current_y: u32,
-    maze: Maze,
+    max_x: u32,
+    max_y: u32,
+}
+
+struct MazeCell {
+    x: u32,
+    y: u32,
 }
 
 impl Maze {
@@ -121,8 +127,26 @@ impl Maze {
         }
     }
 
-    fn as_string(&self) -> String {
+    fn open_north_wall(&mut self, cell: &MazeCell) {
+        let index = self.north_wall_index_for_cell(cell.x, cell.y);
 
+        match index {
+            Some(index) => self.walls[index] = Wall::Open,
+            None => {}, // trying to open through the edge of the map is currently a no-op
+        };
+    }
+
+
+    fn open_east_wall(&mut self, cell: &MazeCell) {
+        let index = self.east_wall_index_for_cell(cell.x, cell.y);
+
+        match index {
+            Some(index) => self.walls[index] = Wall::Open,
+            None => {}, // trying to open through the edge of the map is currently a no-op
+        };
+    }
+
+    fn as_string(&self) -> String {
         let horizontal_wall_segment = "+---";
         let vertical_wall_segment = "|   ";
         let mut horizontal_maze_edge = String::new();
@@ -203,61 +227,47 @@ impl fmt::Display for Maze {
 }
 
 impl MazeTraveler {
-    fn new(maze: Maze) -> Self {
+    fn new(maze: &Maze) -> Self {
         MazeTraveler {
             current_x: 0,
             current_y: 0,
-            maze,
+            max_x: maze.width - 1,
+            max_y: maze.height - 1,
         }
     }
+}
 
-    fn release(self) -> Maze {
-        self.maze
-    }
+impl Iterator for MazeTraveler {
+    type Item = MazeCell;
 
-    fn open_north_wall(&mut self) {
-        let index = self.maze.north_wall_index_for_cell(self.current_x, self.current_y);
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_y > self.max_y { return None; }
 
-        match index {
-            Some(index) => self.maze.walls[index] = Wall::Open,
-            None => {}, // trying to open through the edge of the map is currently a no-op
-        };
-    }
-
-    fn open_east_wall(&mut self) {
-        let index = self.maze.east_wall_index_for_cell(self.current_x, self.current_y);
-
-        match index {
-            Some(index) => self.maze.walls[index] = Wall::Open,
-            None => {}, // trying to open through the edge of the map is currently a no-op
-        };
-    }
-
-    fn move_to_next_cell(self) -> Option<Self> {
-        let MazeTraveler {
-            current_x: x,
-            current_y: y,
-            maze
-        } = self;
-
-        if x < maze.width - 1 {
+        if self.current_x < self.max_x {
             // have not hit right-most wall, increment x
-            Some(MazeTraveler {
-                current_x: x + 1,
-                current_y: y,
-                maze: maze
-            })
-        } else if x == maze.width - 1 && y < maze.height - 1 {
-            // on right-most wall, but not in top row
-            // wrap x and increment y
-            Some(MazeTraveler {
-                current_x: 0,
-                current_y: y + 1,
-                maze: maze
-            })
+            let x = self.current_x;
+            let y = self.current_y;
+
+            self.current_x += 1;
+
+            Some(MazeCell::new(x, y))
         } else {
-            None
+            // on right-most wall
+            // wrap x and increment y
+            let x = self.current_x;
+            let y = self.current_y;
+
+            self.current_x = 0;
+            self.current_y += 1;
+
+            Some(MazeCell::new(x, y))
         }
+    }
+}
+
+impl MazeCell {
+    fn new(x: u32, y: u32) -> Self {
+        MazeCell { x, y }
     }
 }
 
@@ -310,72 +320,78 @@ mod tests {
 
     #[test]
     fn open_north_wall() {
-        let maze = Maze::new(3, 3);
-        let mut traveler = MazeTraveler::new(maze);
+        let mut maze = Maze::new(3, 3);
+        let mut traveler = MazeTraveler::new(&maze);
+        let cell = traveler.next().unwrap();
 
-        traveler.open_north_wall();
+        maze.open_north_wall(&cell);
 
-        assert_snapshot_matches!("open_north_wall", traveler.release().as_string());
+        assert_snapshot_matches!("open_north_wall", maze.as_string());
     }
 
     #[test]
     fn open_east_wall() {
-        let maze = Maze::new(3, 3);
-        let mut traveler = MazeTraveler::new(maze);
+        let mut maze = Maze::new(3, 3);
+        let mut traveler = MazeTraveler::new(&maze);
+        let cell = traveler.next().unwrap();
 
-        traveler.open_east_wall();
+        maze.open_east_wall(&cell);
 
-        assert_snapshot_matches!("open_east_wall", traveler.release().as_string());
+        assert_snapshot_matches!("open_east_wall", maze.as_string());
     }
 
     #[test]
     fn next_cell_open_north_wall() {
-        let maze = Maze::new(3, 3);
-        let traveler = MazeTraveler::new(maze);
-        let mut traveler = traveler.move_to_next_cell().unwrap();
+        let mut maze = Maze::new(3, 3);
+        let mut traveler = MazeTraveler::new(&maze);
+        traveler.next().unwrap(); // skip the first cell
+        let cell = traveler.next().unwrap();
 
-        traveler.open_north_wall();
+        maze.open_north_wall(&cell);
 
-        assert_snapshot_matches!("next_cell_open_north_wall", traveler.release().as_string());
+        assert_snapshot_matches!("next_cell_open_north_wall", maze.as_string());
     }
 
     #[test]
     fn next_cell_open_east_wall() {
-        let maze = Maze::new(3, 3);
-        let traveler = MazeTraveler::new(maze);
-        let mut traveler = traveler.move_to_next_cell().unwrap();
+        let mut maze = Maze::new(3, 3);
+        let mut traveler = MazeTraveler::new(&maze);
+        traveler.next().unwrap(); // skip the first cell
+        let cell = traveler.next().unwrap();
 
-        traveler.open_east_wall();
+        maze.open_east_wall(&cell);
 
-        assert_snapshot_matches!("next_cell_open_east_wall", traveler.release().as_string());
+        assert_snapshot_matches!("next_cell_open_east_wall", maze.as_string());
     }
 
     #[test]
     fn move_to_next_cell_wraps() {
         let maze = Maze::new(3, 3);
-        let traveler = MazeTraveler::new(maze);
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 1, 0
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 2, 0
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 0, 1
+        let mut traveler = MazeTraveler::new(&maze);
+        traveler.next().unwrap(); // Position: 0, 0
+        traveler.next().unwrap(); // Position: 1, 0
+        traveler.next().unwrap(); // Position: 2, 0
+        let cell = traveler.next().unwrap(); // Position: 0, 1
 
-        assert_eq!(0, traveler.current_x);
-        assert_eq!(1, traveler.current_y);
+        assert_eq!(0, cell.x);
+        assert_eq!(1, cell.y);
     }
 
     #[test]
     fn move_to_next_cell_returns_none() {
         let maze = Maze::new(3, 3);
-        let traveler = MazeTraveler::new(maze);
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 1, 0
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 2, 0
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 0, 1
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 1, 1
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 2, 1
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 0, 2
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 1, 2
-        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 2, 2
-        let traveler = traveler.move_to_next_cell();
+        let mut traveler = MazeTraveler::new(&maze);
+        traveler.next().unwrap(); // Position: 0, 0
+        traveler.next().unwrap(); // Position: 1, 0
+        traveler.next().unwrap(); // Position: 2, 0
+        traveler.next().unwrap(); // Position: 0, 1
+        traveler.next().unwrap(); // Position: 1, 1
+        traveler.next().unwrap(); // Position: 2, 1
+        traveler.next().unwrap(); // Position: 0, 2
+        traveler.next().unwrap(); // Position: 1, 2
+        traveler.next().unwrap(); // Position: 2, 2
+        let cell = traveler.next();
 
-        assert!(traveler.is_none());
+        assert!(cell.is_none());
     }
 }
