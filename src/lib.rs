@@ -218,6 +218,10 @@ impl MazeTraveler {
     fn open_north_wall(&mut self) {
         self.maze.walls[0] = Wall::Open;
     }
+
+    fn open_east_wall(&mut self) {
+        self.maze.walls[6] = Wall::Open;
+    }
 }
 
 #[cfg(test)]
@@ -275,5 +279,15 @@ mod tests {
         traveler.open_north_wall();
 
         assert_snapshot_matches!("open_north_wall", traveler.release().as_string());
+    }
+
+    #[test]
+    fn open_east_wall() {
+        let maze = Maze::new(3, 3);
+        let mut traveler = MazeTraveler::new(maze);
+
+        traveler.open_east_wall();
+
+        assert_snapshot_matches!("open_east_wall", traveler.release().as_string());
     }
 }
