@@ -63,16 +63,34 @@ impl Maze {
         }
     }
 
+    /// Gets the index into the wall array which stores the wall to the north of the
+    /// cell at (x, y). Returns None for cells in the top row.
     fn north_wall_index_for_cell(&self, x: u32, y: u32) -> Option<usize> {
-        Some((x + y * self.width) as usize)
+        debug_assert!(x < self.width);
+        debug_assert!(y < self.height);
+
+        // return None for top row of cells
+        if y >= self.height - 1 { return None; }
+
+        let index = (x + y * self.width) as usize;
+        debug_assert!(index < self.walls.len());
+        Some(index)
     }
 
+    /// Gets the index into the wall array which stores the wall to the east of the
+    /// cell at (x, y). Returns None for cells in the right-most row.
     fn east_wall_index_for_cell(&self, x: u32, y: u32) -> Option<usize> {
-        let num_horizontal_segments = (self.height - 1) * self.width;
-        // vertical segments are stored after all of the horizontal segments
-        let east = num_horizontal_segments + (y + x * self.height);
+        debug_assert!(x < self.width);
+        debug_assert!(y < self.height);
 
-        Some(east as usize)
+        // return None for right-most row of cells
+        if x >= self.width - 1 { return None; }
+
+        // vertical segments are stored after all of the horizontal segments
+        let num_horizontal_segments = (self.height - 1) * self.width;
+        let index = (num_horizontal_segments + (y + x * self.height)) as usize;
+        debug_assert!(index < self.walls.len());
+        Some(index)
     }
 
     fn wall_indexes_for_cell(&self, x: u32, y: u32) -> WallIndexesForCell {
@@ -187,9 +205,12 @@ mod tests {
     #[test]
     fn wall_indexes_for_cell_22() {
         let maze = Maze::new(3, 3);
-        let wall_indexes = maze.wall_indexes_for_cell(1, 1);
+        let wall_indexes = maze.wall_indexes_for_cell(2, 2);
 
-        // todo assertions
+        assert_eq!(None, wall_indexes.north);
+        assert_eq!(None, wall_indexes.east);
+        assert_eq!(Some(5), wall_indexes.south);
+        assert_eq!(Some(11), wall_indexes.west);
     }
 
 //    #[test]
