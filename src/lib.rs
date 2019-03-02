@@ -234,11 +234,30 @@ impl MazeTraveler {
     }
 
     fn move_to_next_cell(self) -> Option<Self> {
-        Some(MazeTraveler {
-            current_x: 1,
-            current_y: 0,
-            maze: self.maze
-        })
+        let MazeTraveler {
+            current_x: x,
+            current_y: y,
+            maze
+        } = self;
+
+        if x < maze.width - 1 {
+            // have not hit right-most wall, increment x
+            Some(MazeTraveler {
+                current_x: x + 1,
+                current_y: y,
+                maze: maze
+            })
+        } else if x == maze.width - 1 && y < maze.height - 1 {
+            // on right-most wall, but not in top row
+            // wrap x and increment y
+            Some(MazeTraveler {
+                current_x: 0,
+                current_y: y + 1,
+                maze: maze
+            })
+        } else {
+            None
+        }
     }
 }
 
@@ -329,5 +348,34 @@ mod tests {
         traveler.open_east_wall();
 
         assert_snapshot_matches!("next_cell_open_east_wall", traveler.release().as_string());
+    }
+
+    #[test]
+    fn move_to_next_cell_wraps() {
+        let maze = Maze::new(3, 3);
+        let traveler = MazeTraveler::new(maze);
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 1, 0
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 2, 0
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 0, 1
+
+        assert_eq!(0, traveler.current_x);
+        assert_eq!(1, traveler.current_y);
+    }
+
+    #[test]
+    fn move_to_next_cell_returns_none() {
+        let maze = Maze::new(3, 3);
+        let traveler = MazeTraveler::new(maze);
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 1, 0
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 2, 0
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 0, 1
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 1, 1
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 2, 1
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 0, 2
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 1, 2
+        let mut traveler = traveler.move_to_next_cell().unwrap(); // Position: 2, 2
+        let traveler = traveler.move_to_next_cell();
+
+        assert!(traveler.is_none());
     }
 }
