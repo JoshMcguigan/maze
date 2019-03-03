@@ -1,5 +1,4 @@
 use std::fmt;
-use std::fmt::Write as _;
 use rand::Rng as _;
 
 /// +---+---+---+
@@ -23,7 +22,7 @@ use rand::Rng as _;
 /// 0 1 2
 ///
 
-const LINE_ENDING: &'static str = "\n";
+const LINE_ENDING: &str = "\n";
 
 #[derive(Debug, Copy, Clone)]
 enum Wall {
@@ -31,17 +30,10 @@ enum Wall {
     Closed,
 }
 
-struct Maze {
+pub struct Maze {
     height: u32,
     width: u32,
     walls: Vec<Wall>,
-}
-
-struct WallIndexesForCell {
-    north: Option<usize>,
-    east: Option<usize>,
-    south: Option<usize>,
-    west: Option<usize>,
 }
 
 struct MazeIterator {
@@ -85,16 +77,18 @@ impl Maze {
         let maze_iter = MazeIterator::new(&maze);
         for cell in maze_iter {
             if rand_bool() {
-                let result = maze.open_north_wall(&cell);
+                let result = maze.open_north_wall(cell);
                 if result.is_err() {
                     // if you can't open the north wall, fall back to opening the east wall
-                    maze.open_east_wall(&cell);
+                    // the northeast cell will fail opening both north and east walls, so we ignore this error result
+                    let _ = maze.open_east_wall(cell);
                 }
             } else {
-                let result = maze.open_east_wall(&cell);
+                let result = maze.open_east_wall(cell);
                 if result.is_err() {
                     // if you can't open the east wall, fall back to opening the north wall
-                    maze.open_north_wall(&cell);
+                    // the northeast cell will fail opening both north and east walls, so we ignore this error result
+                    let _ = maze.open_north_wall(cell);
                 }
             }
         }
@@ -133,17 +127,18 @@ impl Maze {
                 let selected_cell_index = rand_usize() % cells_in_run.len();
                 let selected_cell = cells_in_run[selected_cell_index];
                 cells_in_run.drain(..); // the run ends once a passage is opened north
-                let result = maze.open_north_wall(&selected_cell);
+                let result = maze.open_north_wall(selected_cell);
                 if result.is_err() {
                     // if you can't open the north wall, fall back to opening the east wall
-                    maze.open_east_wall(&selected_cell);
+                    let _ = maze.open_east_wall(selected_cell);
                 }
             } else {
-                let result = maze.open_east_wall(&cell);
+                let result = maze.open_east_wall(cell);
                 if result.is_err() {
                     // if you can't open the east wall, fall back to opening the north wall
+                    // the northeast cell will fail opening both north and east walls, so we ignore this error result
                     cells_in_run.drain(..); // the run ends once a passage is opened north
-                    maze.open_north_wall(&cell);
+                    let _ = maze.open_north_wall(cell);
                 }
             }
         }
@@ -184,16 +179,17 @@ impl Maze {
     fn south_wall_index_for_cell(&self, x: u32, y: u32) -> Option<usize> {
         match (x, y) {
             // cells at bottom of maze do not have south wall
-            (x, 0) => None,
+            (_x, 0) => None,
             // get south wall index by going one cell down and getting north wall index
             (x, y) => self.north_wall_index_for_cell(x, y - 1),
         }
     }
 
+    #[allow(dead_code)] // keep this method for symmetry although it is currently unused
     fn west_wall_index_for_cell(&self, x: u32, y: u32) -> Option<usize> {
         match (x, y) {
             // walls at left of maze have no west wall
-            (0, y) => None,
+            (0, _y) => None,
             // get west wall index by going one cell left and getting east wall index
             (x, y) => self.east_wall_index_for_cell(x - 1, y),
         }
@@ -201,7 +197,7 @@ impl Maze {
 
     /// Returns Ok if it was able to open the wall
     /// Returns Err if north wall for this cell was the edge of the maze
-    fn open_north_wall(&mut self, cell: &MazeCell) -> Result<(), ()> {
+    fn open_north_wall(&mut self, cell: MazeCell) -> Result<(), ()> {
         let index = self.north_wall_index_for_cell(cell.x, cell.y);
 
         match index {
@@ -217,7 +213,7 @@ impl Maze {
 
     /// Returns Ok if it was able to open the wall
     /// Returns Err if east wall for this cell was the edge of the maze
-    fn open_east_wall(&mut self, cell: &MazeCell) -> Result<(), ()> {
+    fn open_east_wall(&mut self, cell: MazeCell) -> Result<(), ()> {
         let index = self.east_wall_index_for_cell(cell.x, cell.y);
 
         match index {
@@ -412,7 +408,7 @@ mod tests {
         let mut maze_iter = MazeIterator::new(&maze);
         let cell = maze_iter.next().unwrap();
 
-        maze.open_north_wall(&cell);
+        maze.open_north_wall(cell).unwrap();
 
         assert_snapshot_matches!("open_north_wall", maze.as_string());
     }
@@ -423,7 +419,7 @@ mod tests {
         let mut maze_iter = MazeIterator::new(&maze);
         let cell = maze_iter.next().unwrap();
 
-        maze.open_east_wall(&cell);
+        maze.open_east_wall(cell).unwrap();
 
         assert_snapshot_matches!("open_east_wall", maze.as_string());
     }
@@ -435,7 +431,7 @@ mod tests {
         maze_iter.next().unwrap(); // skip the first cell
         let cell = maze_iter.next().unwrap();
 
-        maze.open_north_wall(&cell);
+        maze.open_north_wall(cell).unwrap();
 
         assert_snapshot_matches!("next_cell_open_north_wall", maze.as_string());
     }
@@ -447,7 +443,7 @@ mod tests {
         maze_iter.next().unwrap(); // skip the first cell
         let cell = maze_iter.next().unwrap();
 
-        maze.open_east_wall(&cell);
+        maze.open_east_wall(cell).unwrap();
 
         assert_snapshot_matches!("next_cell_open_east_wall", maze.as_string());
     }
