@@ -190,20 +190,12 @@ impl Maze {
         }
     }
 
-    // todo perhaps this method can be removed?
-    fn wall_indexes_for_cell(&self, x: u32, y: u32) -> WallIndexesForCell {
-        let west = match (x, y) {
+    fn west_wall_index_for_cell(&self, x: u32, y: u32) -> Option<usize> {
+        match (x, y) {
             // walls at left of maze have no west wall
             (0, y) => None,
             // get west wall index by going one cell left and getting east wall index
             (x, y) => self.east_wall_index_for_cell(x - 1, y),
-        };
-
-        WallIndexesForCell {
-            north: self.north_wall_index_for_cell(x, y),
-            east: self.east_wall_index_for_cell(x, y),
-            south: self.south_wall_index_for_cell(x, y),
-            west,
         }
     }
 
@@ -381,34 +373,37 @@ mod tests {
     #[test]
     fn wall_indexes_for_cell_00() {
         let maze = Maze::new(3, 3);
-        let wall_indexes = maze.wall_indexes_for_cell(0, 0);
+        let x = 0;
+        let y = 0;
 
-        assert_eq!(Some(0), wall_indexes.north);
-        assert_eq!(Some(6), wall_indexes.east);
-        assert_eq!(None, wall_indexes.south);
-        assert_eq!(None, wall_indexes.west);
+        assert_eq!(Some(0), maze.north_wall_index_for_cell(x, y));
+        assert_eq!(Some(6), maze.east_wall_index_for_cell(x, y));
+        assert_eq!(None, maze.south_wall_index_for_cell(x, y));
+        assert_eq!(None, maze.west_wall_index_for_cell(x, y));
     }
 
     #[test]
     fn wall_indexes_for_cell_11() {
         let maze = Maze::new(3, 3);
-        let wall_indexes = maze.wall_indexes_for_cell(1, 1);
+        let x = 1;
+        let y = 1;
 
-        assert_eq!(Some(4), wall_indexes.north);
-        assert_eq!(Some(10), wall_indexes.east);
-        assert_eq!(Some(1), wall_indexes.south);
-        assert_eq!(Some(7), wall_indexes.west);
+        assert_eq!(Some(4), maze.north_wall_index_for_cell(x, y));
+        assert_eq!(Some(10), maze.east_wall_index_for_cell(x, y));
+        assert_eq!(Some(1), maze.south_wall_index_for_cell(x, y));
+        assert_eq!(Some(7), maze.west_wall_index_for_cell(x, y));
     }
 
     #[test]
     fn wall_indexes_for_cell_22() {
         let maze = Maze::new(3, 3);
-        let wall_indexes = maze.wall_indexes_for_cell(2, 2);
+        let x = 2;
+        let y = 2;
 
-        assert_eq!(None, wall_indexes.north);
-        assert_eq!(None, wall_indexes.east);
-        assert_eq!(Some(5), wall_indexes.south);
-        assert_eq!(Some(11), wall_indexes.west);
+        assert_eq!(None, maze.north_wall_index_for_cell(x, y));
+        assert_eq!(None, maze.east_wall_index_for_cell(x, y));
+        assert_eq!(Some(5), maze.south_wall_index_for_cell(x, y));
+        assert_eq!(Some(11), maze.west_wall_index_for_cell(x, y));
     }
 
     #[test]
