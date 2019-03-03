@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fmt::Write as _;
+use rand::Rng as _;
 
 /// +---+---+---+
 /// | 02| 12| 22|
@@ -71,6 +72,35 @@ impl Maze {
         }
     }
 
+    fn binary_tree(height: u32, width: u32) -> Self {
+        let mut rng = rand::thread_rng();
+        Self::binary_tree_with_rand_fn(height, width, || rng.gen_bool(0.5))
+    }
+
+    fn binary_tree_with_rand_fn<F>(height: u32, width: u32, mut rand_bool: F) -> Self
+        where F: FnMut() -> bool
+    {
+        let mut maze = Self::new(height, width);
+        let traveler = MazeTraveler::new(&maze);
+        for cell in traveler {
+            if rand_bool() {
+                let result = maze.open_north_wall(&cell);
+                if result.is_err() {
+                    // if you can't open the north wall, fall back to opening the east wall
+                    maze.open_east_wall(&cell);
+                }
+            } else {
+                let result = maze.open_east_wall(&cell);
+                if result.is_err() {
+                    // if you can't open the east wall, fall back to opening the north wall
+                    maze.open_north_wall(&cell);
+                }
+            }
+        }
+
+        maze
+    }
+
     /// Gets the index into the wall array which stores the wall to the north of the
     /// cell at (x, y). Returns None for cells in the top row.
     fn north_wall_index_for_cell(&self, x: u32, y: u32) -> Option<usize> {
@@ -127,23 +157,36 @@ impl Maze {
         }
     }
 
-    fn open_north_wall(&mut self, cell: &MazeCell) {
+    /// Returns Ok if it was able to open the wall
+    /// Returns Err if north wall for this cell was the edge of the maze
+    fn open_north_wall(&mut self, cell: &MazeCell) -> Result<(), ()> {
         let index = self.north_wall_index_for_cell(cell.x, cell.y);
 
         match index {
-            Some(index) => self.walls[index] = Wall::Open,
-            None => {}, // trying to open through the edge of the map is currently a no-op
-        };
+            Some(index) => {
+                self.walls[index] = Wall::Open;
+                Ok(())
+            },
+            None => {
+                Err(())
+            },
+        }
     }
 
-
-    fn open_east_wall(&mut self, cell: &MazeCell) {
+    /// Returns Ok if it was able to open the wall
+    /// Returns Err if east wall for this cell was the edge of the maze
+    fn open_east_wall(&mut self, cell: &MazeCell) -> Result<(), ()> {
         let index = self.east_wall_index_for_cell(cell.x, cell.y);
 
         match index {
-            Some(index) => self.walls[index] = Wall::Open,
-            None => {}, // trying to open through the edge of the map is currently a no-op
-        };
+            Some(index) => {
+                self.walls[index] = Wall::Open;
+                Ok(())
+            },
+            None => {
+                Err(())
+            },
+        }
     }
 
     fn as_string(&self) -> String {
@@ -393,5 +436,23 @@ mod tests {
         let cell = traveler.next();
 
         assert!(cell.is_none());
+    }
+
+    #[test]
+    fn binary_tree_all_true() {
+        let mut rng = rand::thread_rng();
+        let mock_rand_bool = || true;
+        let maze = Maze::binary_tree_with_rand_fn(3, 3, mock_rand_bool);
+
+        assert_snapshot_matches!("binary_tree_all_true", maze.as_string());
+    }
+
+    #[test]
+    fn binary_tree_all_false() {
+        let mut rng = rand::thread_rng();
+        let mock_rand_bool = || false;
+        let maze = Maze::binary_tree_with_rand_fn(3, 3, mock_rand_bool);
+
+        assert_snapshot_matches!("binary_tree_all_false", maze.as_string());
     }
 }

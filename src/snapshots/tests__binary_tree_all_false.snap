@@ -1,0 +1,13 @@
+---
+created: "2019-03-03T03:24:25.751732Z"
+creator: insta@0.6.3
+source: src/lib.rs
+expression: maze.as_string()
+---
++---+---+---+
+|           |
++---+---+   +
+|           |
++---+---+   +
+|           |
++---+---+---+
