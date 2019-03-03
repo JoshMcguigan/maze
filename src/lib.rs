@@ -51,6 +51,7 @@ struct MazeTraveler {
     max_y: u32,
 }
 
+#[derive(Copy, Clone)]
 struct MazeCell {
     x: u32,
     y: u32,
@@ -72,7 +73,7 @@ impl Maze {
         }
     }
 
-    fn binary_tree(height: u32, width: u32) -> Self {
+    pub fn binary_tree(height: u32, width: u32) -> Self {
         let mut rng = rand::thread_rng();
         Self::binary_tree_with_rand_fn(height, width, || rng.gen_bool(0.5))
     }
@@ -93,6 +94,55 @@ impl Maze {
                 let result = maze.open_east_wall(&cell);
                 if result.is_err() {
                     // if you can't open the east wall, fall back to opening the north wall
+                    maze.open_north_wall(&cell);
+                }
+            }
+        }
+
+        maze
+    }
+
+    pub fn sidewinder(height: u32, width: u32) -> Self {
+        let mut rng = rand::thread_rng();
+        let mut rng2 = rand::thread_rng();
+        Self::sidewinder_with_rand_fn(
+            height,
+            width,
+            || rng.gen_bool(0.5),
+            || rng2.gen(),
+        )
+    }
+
+    fn sidewinder_with_rand_fn<F1, F2>(
+        height: u32,
+        width: u32,
+        mut rand_bool: F1,
+        mut rand_usize: F2,
+    ) -> Self
+        where
+            F1: FnMut() -> bool,
+            F2: FnMut() -> usize
+    {
+        let mut maze = Self::new(height, width);
+        let traveler = MazeTraveler::new(&maze);
+        let mut cells_in_run = vec![];
+        for cell in traveler {
+            cells_in_run.push(cell);
+            if rand_bool() {
+                // randomly open a passage north from one of the cells in run
+                let selected_cell_index = rand_usize() % cells_in_run.len();
+                let selected_cell = cells_in_run[selected_cell_index];
+                cells_in_run.drain(..); // the run ends once a passage is opened north
+                let result = maze.open_north_wall(&selected_cell);
+                if result.is_err() {
+                    // if you can't open the north wall, fall back to opening the east wall
+                    maze.open_east_wall(&selected_cell);
+                }
+            } else {
+                let result = maze.open_east_wall(&cell);
+                if result.is_err() {
+                    // if you can't open the east wall, fall back to opening the north wall
+                    cells_in_run.drain(..); // the run ends once a passage is opened north
                     maze.open_north_wall(&cell);
                 }
             }
@@ -464,5 +514,49 @@ mod tests {
         let maze = Maze::binary_tree_with_rand_fn(3, 3, mock_rand_bool);
 
         assert_snapshot_matches!("binary_tree_alternating_bool", maze.as_string());
+    }
+
+    #[test]
+    fn sidewinder_all_true() {
+        let mock_rand_bool = || true;
+        let mock_rand_u32 = || 0_usize;
+        let maze = Maze::sidewinder_with_rand_fn(3, 3, mock_rand_bool, mock_rand_u32);
+
+        assert_snapshot_matches!("sidewinder_all_true", maze.as_string());
+    }
+
+    #[test]
+    fn sidewinder_all_false() {
+        let mock_rand_bool = || false;
+        let mock_rand_u32 = || 0_usize;
+        let maze = Maze::sidewinder_with_rand_fn(3, 3, mock_rand_bool, mock_rand_u32);
+
+        assert_snapshot_matches!("sidewinder_all_false", maze.as_string());
+    }
+
+    #[test]
+    fn sidewinder_alternating_bool_0usize() {
+        let mut val = false;
+        let mock_rand_bool = || {
+            val = !val;
+            val
+        };
+        let mock_rand_u32 = || 0_usize;
+        let maze = Maze::sidewinder_with_rand_fn(3, 3, mock_rand_bool, mock_rand_u32);
+
+        assert_snapshot_matches!("sidewinder_alternating_bool_0usize", maze.as_string());
+    }
+
+    #[test]
+    fn sidewinder_alternating_bool_1usize() {
+        let mut val = false;
+        let mock_rand_bool = || {
+            val = !val;
+            val
+        };
+        let mock_rand_u32 = || 1_usize;
+        let maze = Maze::sidewinder_with_rand_fn(3, 3, mock_rand_bool, mock_rand_u32);
+
+        assert_snapshot_matches!("sidewinder_alternating_bool_1usize", maze.as_string());
     }
 }
