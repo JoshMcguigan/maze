@@ -440,7 +440,6 @@ mod tests {
 
     #[test]
     fn binary_tree_all_true() {
-        let mut rng = rand::thread_rng();
         let mock_rand_bool = || true;
         let maze = Maze::binary_tree_with_rand_fn(3, 3, mock_rand_bool);
 
@@ -449,10 +448,21 @@ mod tests {
 
     #[test]
     fn binary_tree_all_false() {
-        let mut rng = rand::thread_rng();
         let mock_rand_bool = || false;
         let maze = Maze::binary_tree_with_rand_fn(3, 3, mock_rand_bool);
 
         assert_snapshot_matches!("binary_tree_all_false", maze.as_string());
+    }
+
+    #[test]
+    fn binary_tree_alternating_bool() {
+        let mut val = false;
+        let mock_rand_bool = || {
+            val = !val;
+            val
+        };
+        let maze = Maze::binary_tree_with_rand_fn(3, 3, mock_rand_bool);
+
+        assert_snapshot_matches!("binary_tree_alternating_bool", maze.as_string());
     }
 }
