@@ -52,7 +52,7 @@ struct MazeCell {
 impl Maze {
     /// Create a new maze of all closed walls
     /// Panics if height or width are < 1
-    fn new(height: u32, width: u32) -> Self {
+    fn new(width: u32, height: u32) -> Self {
         let num_vertical_segments = (width - 1) * height;
         let num_horizontal_segments = (height - 1) * width;
         let total_walls = num_vertical_segments + num_horizontal_segments;
@@ -65,12 +65,12 @@ impl Maze {
         }
     }
 
-    pub fn binary_tree(height: u32, width: u32) -> Self {
+    pub fn binary_tree(width: u32, height: u32) -> Self {
         let mut rng = rand::thread_rng();
         Self::binary_tree_with_rand_fn(height, width, || rng.gen_bool(0.5))
     }
 
-    fn binary_tree_with_rand_fn<F>(height: u32, width: u32, mut rand_bool: F) -> Self
+    fn binary_tree_with_rand_fn<F>(width: u32, height: u32, mut rand_bool: F) -> Self
         where F: FnMut() -> bool
     {
         let mut maze = Self::new(height, width);
@@ -96,7 +96,7 @@ impl Maze {
         maze
     }
 
-    pub fn sidewinder(height: u32, width: u32) -> Self {
+    pub fn sidewinder(width: u32, height: u32) -> Self {
         let mut rng = rand::thread_rng();
         let mut rng2 = rand::thread_rng();
         Self::sidewinder_with_rand_fn(
@@ -108,8 +108,8 @@ impl Maze {
     }
 
     fn sidewinder_with_rand_fn<F1, F2>(
-        height: u32,
         width: u32,
+        height: u32,
         mut rand_bool: F1,
         mut rand_usize: F2,
     ) -> Self
