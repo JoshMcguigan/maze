@@ -43,7 +43,23 @@ struct MazeIterator {
     max_y: u32,
 }
 
-#[derive(Copy, Clone)]
+/// Calculates and stores the distance from start point to every other cell on the maze
+struct MazePath {
+    start: MazeCell,
+    distances: Vec<Vec<u32>>,
+}
+
+/// Stores the available movement options from a given starting point
+/// None represents either a wall or maze edge in that direction
+#[derive(Debug, PartialEq)]
+struct MovementOptions {
+    north: Option<MazeCell>,
+    east: Option<MazeCell>,
+    south: Option<MazeCell>,
+    west: Option<MazeCell>,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
 struct MazeCell {
     x: u32,
     y: u32,
@@ -299,6 +315,15 @@ impl Maze {
 
         total
     }
+
+    fn get_movement_options_for(&self, cell: MazeCell) -> MovementOptions {
+        MovementOptions::new(
+            Some(MazeCell::new(0, 1)),
+            None,
+            None,
+            None,
+        )
+    }
 }
 
 impl fmt::Display for Maze {
@@ -343,6 +368,17 @@ impl Iterator for MazeIterator {
 
             Some(MazeCell::new(x, y))
         }
+    }
+}
+
+impl MovementOptions {
+    fn new(
+        north: Option<MazeCell>,
+        east: Option<MazeCell>,
+        south: Option<MazeCell>,
+        west: Option<MazeCell>,
+    ) -> Self {
+        MovementOptions { north, east, south, west }
     }
 }
 
@@ -538,16 +574,34 @@ mod tests {
         assert_snapshot_matches!("sidewinder_alternating_bool_0usize", maze.as_string());
     }
 
-    #[test]
-    fn sidewinder_alternating_bool_1usize() {
+    fn build_sidewinder_alternating_bool_1usize() -> Maze {
         let mut val = false;
         let mock_rand_bool = || {
             val = !val;
             val
         };
         let mock_rand_u32 = || 1_usize;
-        let maze = Maze::sidewinder_with_rand_fn(3, 3, mock_rand_bool, mock_rand_u32);
+        Maze::sidewinder_with_rand_fn(3, 3, mock_rand_bool, mock_rand_u32)
+    }
+
+    #[test]
+    fn sidewinder_alternating_bool_1usize() {
+        let maze = build_sidewinder_alternating_bool_1usize();
 
         assert_snapshot_matches!("sidewinder_alternating_bool_1usize", maze.as_string());
+    }
+
+    #[test]
+    fn get_movement_options_for_sidewinder_00() {
+        let maze = build_sidewinder_alternating_bool_1usize();
+
+        let cell = MazeCell::new(0, 0);
+        let expected_movement_options = MovementOptions::new(
+            Some(MazeCell::new(0, 1)),
+            None,
+            None,
+            None,
+        );
+        assert_eq!(expected_movement_options, maze.get_movement_options_for(cell));
     }
 }
