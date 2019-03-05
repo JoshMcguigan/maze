@@ -243,7 +243,18 @@ impl Maze {
         }
     }
 
-    fn as_string(&self) -> String {
+    fn get_movement_options_for(&self, cell: MazeCell) -> MovementOptions {
+        MovementOptions::new(
+            Some(MazeCell::new(0, 1)),
+            None,
+            None,
+            None,
+        )
+    }
+}
+
+impl fmt::Display for Maze {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let horizontal_wall_segment = "+---";
         let vertical_wall_segment = "|   ";
         let mut horizontal_maze_edge = String::new();
@@ -313,22 +324,7 @@ impl Maze {
             total += "+";
         }
 
-        total
-    }
-
-    fn get_movement_options_for(&self, cell: MazeCell) -> MovementOptions {
-        MovementOptions::new(
-            Some(MazeCell::new(0, 1)),
-            None,
-            None,
-            None,
-        )
-    }
-}
-
-impl fmt::Display for Maze {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.as_string())
+        write!(f, "{}", total)
     }
 }
 
@@ -391,15 +387,13 @@ impl MazeCell {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use insta::assert_snapshot_matches;
+    use insta::assert_display_snapshot_matches;
 
     #[test]
     fn new_3x3() {
         let maze = Maze::new(3, 3);
 
-        // todo can insta use test name as name
-        // todo can insta handle printing if type impls Display
-        assert_snapshot_matches!("new_3x3", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]
@@ -446,7 +440,7 @@ mod tests {
 
         maze.open_north_wall(cell).unwrap();
 
-        assert_snapshot_matches!("open_north_wall", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]
@@ -457,7 +451,7 @@ mod tests {
 
         maze.open_east_wall(cell).unwrap();
 
-        assert_snapshot_matches!("open_east_wall", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]
@@ -469,7 +463,7 @@ mod tests {
 
         maze.open_north_wall(cell).unwrap();
 
-        assert_snapshot_matches!("next_cell_open_north_wall", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]
@@ -481,7 +475,7 @@ mod tests {
 
         maze.open_east_wall(cell).unwrap();
 
-        assert_snapshot_matches!("next_cell_open_east_wall", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]
@@ -520,7 +514,7 @@ mod tests {
         let mock_rand_bool = || true;
         let maze = Maze::binary_tree_with_rand_fn(3, 3, mock_rand_bool);
 
-        assert_snapshot_matches!("binary_tree_all_true", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]
@@ -528,7 +522,7 @@ mod tests {
         let mock_rand_bool = || false;
         let maze = Maze::binary_tree_with_rand_fn(3, 3, mock_rand_bool);
 
-        assert_snapshot_matches!("binary_tree_all_false", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]
@@ -540,7 +534,7 @@ mod tests {
         };
         let maze = Maze::binary_tree_with_rand_fn(3, 3, mock_rand_bool);
 
-        assert_snapshot_matches!("binary_tree_alternating_bool", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]
@@ -549,7 +543,7 @@ mod tests {
         let mock_rand_u32 = || 0_usize;
         let maze = Maze::sidewinder_with_rand_fn(3, 3, mock_rand_bool, mock_rand_u32);
 
-        assert_snapshot_matches!("sidewinder_all_true", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]
@@ -558,7 +552,7 @@ mod tests {
         let mock_rand_u32 = || 0_usize;
         let maze = Maze::sidewinder_with_rand_fn(3, 3, mock_rand_bool, mock_rand_u32);
 
-        assert_snapshot_matches!("sidewinder_all_false", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]
@@ -571,7 +565,7 @@ mod tests {
         let mock_rand_u32 = || 0_usize;
         let maze = Maze::sidewinder_with_rand_fn(3, 3, mock_rand_bool, mock_rand_u32);
 
-        assert_snapshot_matches!("sidewinder_alternating_bool_0usize", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     fn build_sidewinder_alternating_bool_1usize() -> Maze {
@@ -588,7 +582,7 @@ mod tests {
     fn sidewinder_alternating_bool_1usize() {
         let maze = build_sidewinder_alternating_bool_1usize();
 
-        assert_snapshot_matches!("sidewinder_alternating_bool_1usize", maze.as_string());
+        assert_display_snapshot_matches!(maze);
     }
 
     #[test]

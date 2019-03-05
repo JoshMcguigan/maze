@@ -1,8 +1,8 @@
 ---
-created: "2019-03-02T16:37:08.052968Z"
-creator: insta@0.6.3
+created: "2019-03-05T11:59:13.027508Z"
+creator: insta@0.7.0
 source: src/lib.rs
-expression: traveler.release().as_string()
+expression: maze
 ---
 +---+---+---+
 |   |   |   |

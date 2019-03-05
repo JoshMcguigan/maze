@@ -1,8 +1,8 @@
 ---
-created: "2019-03-03T03:22:24.619712Z"
-creator: insta@0.6.3
+created: "2019-03-05T11:59:13.027636Z"
+creator: insta@0.7.0
 source: src/lib.rs
-expression: maze.as_string()
+expression: maze
 ---
 +---+---+---+
 |           |

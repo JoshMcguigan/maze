@@ -8,4 +8,4 @@ edition = "2018"
 rand = "0.6.5"
 
 [dev-dependencies]
-insta = "0.6.3"
+insta = "0.7.0"
