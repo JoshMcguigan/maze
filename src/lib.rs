@@ -1,5 +1,5 @@
-use std::fmt;
 use rand::Rng as _;
+use std::fmt;
 
 /// +---+---+---+
 /// | 02| 12| 22|
@@ -87,7 +87,8 @@ impl Maze {
     }
 
     fn binary_tree_with_rand_fn<F>(width: u32, height: u32, mut rand_bool: F) -> Self
-        where F: FnMut() -> bool
+    where
+        F: FnMut() -> bool,
     {
         let mut maze = Self::new(height, width);
         let maze_iter = MazeIterator::new(&maze);
@@ -115,12 +116,7 @@ impl Maze {
     pub fn sidewinder(width: u32, height: u32) -> Self {
         let mut rng = rand::thread_rng();
         let mut rng2 = rand::thread_rng();
-        Self::sidewinder_with_rand_fn(
-            height,
-            width,
-            || rng.gen_bool(0.5),
-            || rng2.gen(),
-        )
+        Self::sidewinder_with_rand_fn(height, width, || rng.gen_bool(0.5), || rng2.gen())
     }
 
     fn sidewinder_with_rand_fn<F1, F2>(
@@ -129,9 +125,9 @@ impl Maze {
         mut rand_bool: F1,
         mut rand_usize: F2,
     ) -> Self
-        where
-            F1: FnMut() -> bool,
-            F2: FnMut() -> usize
+    where
+        F1: FnMut() -> bool,
+        F2: FnMut() -> usize,
     {
         let mut maze = Self::new(height, width);
         let maze_iter = MazeIterator::new(&maze);
@@ -169,7 +165,9 @@ impl Maze {
         debug_assert!(y < self.height);
 
         // return None for top row of cells
-        if y >= self.height - 1 { return None; }
+        if y >= self.height - 1 {
+            return None;
+        }
 
         let index = (x + y * self.width) as usize;
         debug_assert!(index < self.walls.len());
@@ -183,7 +181,9 @@ impl Maze {
         debug_assert!(y < self.height);
 
         // return None for right-most row of cells
-        if x >= self.width - 1 { return None; }
+        if x >= self.width - 1 {
+            return None;
+        }
 
         // vertical segments are stored after all of the horizontal segments
         let num_horizontal_segments = (self.height - 1) * self.width;
@@ -220,10 +220,8 @@ impl Maze {
             Some(index) => {
                 self.walls[index] = Wall::Open;
                 Ok(())
-            },
-            None => {
-                Err(())
-            },
+            }
+            None => Err(()),
         }
     }
 
@@ -236,96 +234,135 @@ impl Maze {
             Some(index) => {
                 self.walls[index] = Wall::Open;
                 Ok(())
-            },
-            None => {
-                Err(())
-            },
+            }
+            None => Err(()),
         }
     }
 
     fn get_movement_options_for(&self, cell: MazeCell) -> MovementOptions {
-        MovementOptions::new(
-            Some(MazeCell::new(0, 1)),
-            None,
-            None,
-            None,
-        )
+        MovementOptions::new(Some(MazeCell::new(0, 1)), None, None, None)
     }
 }
 
 impl fmt::Display for Maze {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let horizontal_wall_segment = "+---";
-        let vertical_wall_segment = "|   ";
-        let mut horizontal_maze_edge = String::new();
-        let mut vertical = String::new();
+        let horizontal_wall_segment = "───";
+        let vertical_wall_segment = "│";
+        let nowall_segment = "   ";
 
-        for _ in 0..self.width {
-            horizontal_maze_edge += horizontal_wall_segment;
-            vertical += vertical_wall_segment;
+        let mut total = String::from("┌");
+
+        // the top maze edge
+        for x in 1..(self.width + 1) {
+            total += horizontal_wall_segment;
+            total += get_corner(self, x, self.height).unwrap();
         }
 
-        horizontal_maze_edge += "+";
-        vertical += "|";
-
-
-        let mut total = String::new();
-
-        // add top maze edge
-        total += &horizontal_maze_edge;
-
         for y in (0..self.height).rev() {
-
             total += LINE_ENDING;
 
             // add left maze edge
-            total += "|   ";
+            total += vertical_wall_segment;
 
+            // for each cell add east wall
             for x in 0..self.width {
-                // for each cell add east wall
-                let wall_index = self.east_wall_index_for_cell(x, y);
+                total += nowall_segment;
 
-                if let Some(index) = wall_index {
-                    let segment = match self.walls[index] {
-                        Wall::Open => "    ",
-                        Wall::Closed => "|   ",
+                if let Some(index) = self.east_wall_index_for_cell(x, y) {
+                    total += match self.walls[index] {
+                        Wall::Open => " ",
+                        Wall::Closed => vertical_wall_segment,
                     };
-
-                    total += segment;
                 } else {
                     // you've reached the edge of the maze
-                    total += "|";
+                    total += vertical_wall_segment;
                 }
             }
 
             // insert newline between vertical walls and horizontal walls
             total += LINE_ENDING;
 
+            total += get_corner(self, 0, y).unwrap();
+
             for x in 0..self.width {
                 // for each cell add south wall
-
-                // todo consider cleaning this up by adding helper method to get wall
-                //     state directly rather than index
                 let wall_index = self.south_wall_index_for_cell(x, y);
 
                 if let Some(index) = wall_index {
-                    let segment = match self.walls[index] {
-                        Wall::Open => "+   ",
-                        Wall::Closed => "+---",
+                    total += match self.walls[index] {
+                        Wall::Open => nowall_segment,
+                        Wall::Closed => horizontal_wall_segment,
                     };
-
-                    total += segment;
                 } else {
                     // you've reached the edge of the maze
-                    total += "+---";
+                    total += horizontal_wall_segment;
                 }
+                total += get_corner(self, x + 1, y).unwrap();
             }
-
-            total += "+";
         }
 
         write!(f, "{}", total)
     }
+}
+
+fn get_corner(maze: &Maze, x: u32, y: u32) -> Option<&'static str> {
+    use Wall::*;
+    if x > maze.width || y > maze.height {
+        return None;
+    }
+    let corner = match (x, y) {
+        (0, 0) => "└",
+        (0, y) if y == maze.height => "┌",
+        (x, 0) if x == maze.width => "┘",
+        (x, y) if x == maze.width && y == maze.height => "┐",
+        (0, y) => match maze.walls[maze.south_wall_index_for_cell(0, y).unwrap()] {
+            Open => "│",
+            Closed => "├",
+        },
+        (x, y) if x == maze.width => {
+            match maze.walls[maze.south_wall_index_for_cell(x - 1, y).unwrap()] {
+                Open => "│",
+                Closed => "┤",
+            }
+        }
+        (x, 0) => match maze.walls[maze.east_wall_index_for_cell(x - 1, 0).unwrap()] {
+            Open => "─",
+            Closed => "┴",
+        },
+        (x, y) if y == maze.height => {
+            match maze.walls[maze.east_wall_index_for_cell(x - 1, y - 1).unwrap()] {
+                Open => "─",
+                Closed => "┬",
+            }
+        }
+        (x, y) => {
+            let walls = (
+                maze.walls[maze.east_wall_index_for_cell(x - 1, y).unwrap()],
+                maze.walls[maze.north_wall_index_for_cell(x, y - 1).unwrap()],
+                maze.walls[maze.east_wall_index_for_cell(x - 1, y - 1).unwrap()],
+                maze.walls[maze.north_wall_index_for_cell(x - 1, y - 1).unwrap()],
+            );
+            match walls {
+                (Open, Open, Open, Open) => " ",
+                (Open, Open, Open, Closed) => "╴",
+                (Open, Open, Closed, Open) => "╷",
+                (Open, Open, Closed, Closed) => "┐",
+                (Open, Closed, Open, Open) => "╶",
+                (Open, Closed, Open, Closed) => "─",
+                (Open, Closed, Closed, Open) => "┌",
+                (Open, Closed, Closed, Closed) => "┬",
+                (Closed, Open, Open, Open) => "╵",
+                (Closed, Open, Open, Closed) => "┘",
+                (Closed, Open, Closed, Open) => "│",
+                (Closed, Open, Closed, Closed) => "┤",
+                (Closed, Closed, Open, Open) => "└",
+                (Closed, Closed, Open, Closed) => "┴",
+                (Closed, Closed, Closed, Open) => "├",
+                (Closed, Closed, Closed, Closed) => "┼",
+            }
+        }
+    };
+    Some(corner)
 }
 
 impl MazeIterator {
@@ -343,7 +380,9 @@ impl Iterator for MazeIterator {
     type Item = MazeCell;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_y > self.max_y { return None; }
+        if self.current_y > self.max_y {
+            return None;
+        }
 
         if self.current_x < self.max_x {
             // have not hit right-most wall, increment x
@@ -374,7 +413,12 @@ impl MovementOptions {
         south: Option<MazeCell>,
         west: Option<MazeCell>,
     ) -> Self {
-        MovementOptions { north, east, south, west }
+        MovementOptions {
+            north,
+            east,
+            south,
+            west,
+        }
     }
 }
 
@@ -590,12 +634,11 @@ mod tests {
         let maze = build_sidewinder_alternating_bool_1usize();
 
         let cell = MazeCell::new(0, 0);
-        let expected_movement_options = MovementOptions::new(
-            Some(MazeCell::new(0, 1)),
-            None,
-            None,
-            None,
+        let expected_movement_options =
+            MovementOptions::new(Some(MazeCell::new(0, 1)), None, None, None);
+        assert_eq!(
+            expected_movement_options,
+            maze.get_movement_options_for(cell)
         );
-        assert_eq!(expected_movement_options, maze.get_movement_options_for(cell));
     }
 }
